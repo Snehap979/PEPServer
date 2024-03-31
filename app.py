@@ -83,8 +83,8 @@ import boto3
 dynamodb = boto3.client(
     'dynamodb',
     region_name='us-west-1',
-    aws_access_key_id='AKIATCKAM2M6EZWVAP3Q',
-    aws_secret_access_key='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'
+    # aws_access_key_id='AKIATCKAM2M6EZWVAP3Q',
+    # aws_secret_access_key='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'
 )
 
 def save_user_info(username, email, phone_number):
