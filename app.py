@@ -1,120 +1,65 @@
 from flask import Flask, request, jsonify
 app = Flask(__name__)
-# users = []
+import secrets
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import json
+app.config['JWT_SECRET_KEY'] = json.dumps(secrets.SystemRandom().getrandbits(128))
 
-# @app.route('/register', methods=['POST'])
-# def register():
-#     data = request.json
-#     if not data or 'username' not in data or 'password' not in data:
-#         return jsonify({'error': 'Username and password are required'}), 400
-
-#     username = data['username']
-#     password = data['password']
-
-#     # Check if the username already exists
-#     if any(user['username'] == username for user in users):
-#         return jsonify({'error': 'Username already exists'}), 400
-
-#     # Create a new user
-#     new_user = {'username': username, 'password': password}
-#     users.append(new_user)
-#     return jsonify({'message': 'User registered successfully'}), 201
-
-# @app.route('/login', methods=['POST'])
-# def login():
-#     data = request.json
-#     if not data or 'username' not in data or 'password' not in data:
-#         return jsonify({'error': 'Username and password are required'}), 400
-
-#     username = data['username']
-#     password = data['password']
-
-#     # Check if the user exists and the password is correct
-#     for user in users:
-#         if user['username'] == username and user['password'] == password:
-#             return jsonify({'message': 'Login successful'}), 200
-
-#     return jsonify({'error': 'Invalid username or password'}), 401
-
-# @app.route('/users', methods=['GET'])
-# def get_users():
-#     return jsonify(users), 200
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
-
-
-
-# import boto3
-
-# # Initialize AWS Cognito client
-# client = boto3.client('cognito-idp', region_name='us-west-1')
-
-# def signup(username, password):
-#     try:
-#         # Sign up the user
-#         response = client.sign_up(
-#             ClientId='12o0nfiv0epben0n2goo3c8k27',
-#             Password='Ycaps9999!',
-#             Username='+16576267473',
-#              UserAttributes=[
-#                 {'Name': 'email', 'Value':'snehap97779@gmail.com' },
-#                 {'Name': 'phone_number', 'Value': '+16576267473'}
-#             ]
-
-#         )
-#         return response['UserSub']  # Return the user sub (unique identifier)
-#     except client.exceptions.UsernameExistsException:
-#         return 'Username already exists'
-#     except Exception as e:
-#         return str(e)
-
-# # Example usage:
-# username = 'example_user'
-# password = 'example_password'
-# result = signup(username, password)
-# print(result)
-
-
-
+jwt = JWTManager(app)
+from flask_cors import CORS, cross_origin
+CORS(app)
 import boto3
+from DB import saveUser
+from Authenticate import signup
+from Authenticate import authenticate_user
+from DB  import getItems
 
-# Initialize DynamoDB client
-dynamodb = boto3.client(
-    'dynamodb',
-    region_name='us-west-1',
-   
-)
 
-def save_user_info(username, email, phone_number):
-    try:
-        # Save user information to DynamoDB
-        response = dynamodb.put_item(
-            TableName='pepdatabase',
-            Item={
-                'user_id':{'S':user_id},
-                'username': {'S': username},
-                'email': {'S': email},
-                'phone_number': {'S': phone_number}
-            }
-        )
-        return True
-    except Exception as e:
-        print("Error saving user info:", e)
-        return False
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    
+    if not data or 'phoneNumber' not in data or 'password' not in data:
+        return jsonify({'error': 'phoneNumber and password are required'}), 400
 
-# Example usage:
-username = 'example_user'
-email = 'example@example.com'
-phone_number = '+1234567890'
-user_id='1234abcd'
-if save_user_info(username, email, phone_number):
-    print("User information saved successfully")
-else:
-    print("Failed to save user information")
+    username = data['phoneNumber']
+    password = data['password']
+    email=data['email']
+    response=signup(username,password,email)
+    if response is False:
+            return jsonify({'error': 'Username already exists'}), 201
+
+    # Create a new user
+    else:
+        saveUser(username,email)
+        return jsonify({'message': 'User registered successfully'}), 200
 
 
 
+@app.route('/authenticateUser', methods=['POST'])
+def authenticateUser():
+    data = request.json
+    print("data",data)
+    phoneNumber = data['phone']
+    password = data['password']
+    if not data or 'phone' not in data or 'password' not in data:
+        return jsonify({'error': 'phoneNumber and password are required'}), 400
+    response=authenticate_user(phoneNumber,password)
+    if response is None:
+            return jsonify({'error': 'Login failed,invalid phone or password' }), 400
+
+    # Create a new user
+    else:
+        accessToken = create_access_token(identity=phoneNumber)
+        print("accessToken",accessToken)
+        return jsonify({'accessToken': accessToken}), 200
 
 
+@app.route('/data', methods=['GET'])
+def get_data(): 
+    device_id = request.args.get('deviceId')
+    startTime = request.args.get('startTime')
+    endTime=request.args.get('endTime')
+    response=getItems(device_id,startTime,endTime)
+    return json.dumps(response)
 
